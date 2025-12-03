@@ -1,0 +1,39 @@
+name: Build Windows CC Package
+
+on: workflow_dispatch  # 允许手动点击按钮触发
+
+jobs:
+  build:
+    runs-on: windows-latest  # 指定用 GitHub 的 Windows 服务器
+
+    steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Create Project Folder
+      run: |
+        mkdir CAIE_Windows_Kit
+        cd CAIE_Windows_Kit
+        npm init -y
+
+    - name: Install Claude Code (Windows Version)
+      working-directory: ./CAIE_Windows_Kit
+      # 这里的关键：在真正的 Windows 环境下安装，生成的二进制文件就是 Win 版的
+      run: npm install @anthropic-ai/claude-code --no-bin-links
+
+    - name: Clean up junk (Sanitize)
+      working-directory: ./CAIE_Windows_Kit
+      run: |
+        del package.json
+        del package-lock.json
+        # 删除可能存在的缓存
+        if exist .temp_config rmdir /s /q .temp_config
+
+    - name: Upload Artifact (Save Result)
+      uses: actions/upload-artifact@v4
+      with:
+        name: node_modules_windows
+        path: CAIE_Windows_Kit/node_modules
+        retention-days: 1
