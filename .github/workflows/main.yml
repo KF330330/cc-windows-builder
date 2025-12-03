@@ -1,10 +1,15 @@
-name: Build Windows CC Package
+name: Build Windows CC Package V2
 
-on: workflow_dispatch  # 允许手动点击按钮触发
+on: [workflow_dispatch]
 
 jobs:
   build:
-    runs-on: windows-latest  # 指定用 GitHub 的 Windows 服务器
+    runs-on: windows-latest
+    
+    # 关键修改：强制使用 Bash，避免 PowerShell 语法坑
+    defaults:
+      run:
+        shell: bash
 
     steps:
     - name: Setup Node.js
@@ -12,28 +17,24 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Create Project Folder
+    - name: Initialize Project
       run: |
-        mkdir CAIE_Windows_Kit
-        cd CAIE_Windows_Kit
         npm init -y
+        # 设置淘宝源，防止网络超时导致安装失败
+        npm config set registry https://registry.npmmirror.com
 
-    - name: Install Claude Code (Windows Version)
-      working-directory: ./CAIE_Windows_Kit
-      # 这里的关键：在真正的 Windows 环境下安装，生成的二进制文件就是 Win 版的
-      run: npm install @anthropic-ai/claude-code --no-bin-links
-
-    - name: Clean up junk (Sanitize)
-      working-directory: ./CAIE_Windows_Kit
+    - name: Install Claude Code (Windows)
       run: |
-        del package.json
-        del package-lock.json
-        # 删除可能存在的缓存
-        if exist .temp_config rmdir /s /q .temp_config
+        echo "开始安装..."
+        # 增加 --no-optional 避免安装不必要的底层编译工具
+        # 增加 --verbose 以便出错时能看到具体原因
+        npm install @anthropic-ai/claude-code --no-optional --verbose
 
-    - name: Upload Artifact (Save Result)
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
+      # 无论上一步是否完全成功，都尝试打包结果方便检查
+      if: always() 
       with:
         name: node_modules_windows
-        path: CAIE_Windows_Kit/node_modules
+        path: node_modules/
         retention-days: 1
